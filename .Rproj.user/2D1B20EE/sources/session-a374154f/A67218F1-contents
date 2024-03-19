@@ -4,7 +4,7 @@
 \alias{launchApp}
 \title{Launch Antibody Analysis Tool}
 \usage{
-launchApp(pythonPath = "~/miniconda3/bin/python", outDirPath = "~/share/igblast")
+launchApp(pythonPath = "~/miniconda3/bin/python", outDirPath = "~/share/igblast_new")
 }
 \description{
 Launches a Shiny application that provides an interface for antibody sequence analysis,
@@ -32,11 +32,13 @@ Each tab includes options to download the analysis results in CSV or TSV format.
   launchApp(pythonPath = "path/to/python", outDirPath = "path/to/outdir")
 }
 }
-\param{pythonPath}{
-The path to the Python executable. If not specified, "~/miniconda3/bin/python" is used as the default.
-Please adjust the default path as necessary based on your Python installation.
-}
-\param{outDirPath}{
-The path to the OUTDIR directory. If not specified, "~/share/igblast" is used as the default.
-Please adjust the default path as necessary based on your file system.
+\arguments{
+  \item{pythonPath}{
+    The path to the Python executable. If not specified, "~/miniconda3/bin/python" is used as the default.
+    Please adjust the default path as necessary based on your Python installation.
+  }
+  \item{outDirPath}{
+    The path to the OUTDIR directory. If not specified, "~/share/igblast_new" is used as the default.
+    Please adjust the default path as necessary based on your file system.
+  }
 }
