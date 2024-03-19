@@ -1,13 +1,14 @@
-library(shiny)
-library(reticulate)
-library(DT)
-library(Peptides)
-library(stringr)
-library(tableHTML)
 source("R/custom_functions.R")
 
 
 launchApp <- function(pythonPath = NULL, outDirPath = NULL) {
+  library(shiny)
+  library(reticulate)
+  library(DT)
+  library(Peptides)
+  library(stringr)
+  library(tableHTML)
+
   if (is.null(pythonPath)) {
     pythonPath <- "~/miniconda3/bin/python"  # Please adjust the default paths as necessary
   }
@@ -16,7 +17,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL) {
   }
   reticulate::use_python(pythonPath)
 
-  ui <- fluidPage(
+  ui <- shiny::fluidPage(
     titlePanel("Antibody Analysis Tool"),
     tabsetPanel(
       tabPanel("Sequence Analysis",
