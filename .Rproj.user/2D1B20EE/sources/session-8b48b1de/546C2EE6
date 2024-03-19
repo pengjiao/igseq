@@ -1,0 +1,26 @@
+{
+    "id": "546C2EE6",
+    "path": "~/igseq/R/app.R",
+    "project_path": "R/app.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1709091147168.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "18,34",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1710770702,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1710770702857,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,84 @@
+---
+title: "fmt_to_table"
+output: html_document
+date: "2024-03-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load library
+```{r}
+
+```
+
+## Data import
+
+### amino acid
+```{r}
+v.input <- read.table("../project/myscript/test2_v.tsv", sep = "\t", header = F, fill = T)
+j.input <- read.table("../project/myscript/test2_j.tsv", sep = "\t", header = F, fill = T)
+n.input <- read.table("../project/myscript/test.tsv", sep = "\t", header = F, fill = T)
+n.input$id <- paste0(n.input$V2, "_", n.input$V1)
+
+seqids <- c("test1", "test2")
+seqids <- c("seq1", "seq2")
+seqids.new <- paste0(rep(seqids,each=3), "_", rep(c("V", "D", "J"), times=length(seqids)))
+v.df <- v.input[match(seqids, v.input$V2),]
+j.df <- v.input[match(seqids, v.input$V2),]
+n.df <- n.input[match(seqids.new, n.input$id),]
+
+ss <-  read.table("../project/myscript/igblast_results_v_2024-03-17.tsv", sep = "\t", header = T, fill = T)
+```
+
+
+```{r}
+library(Peptides)
+
+df_seq <- data.frame(seq_id = ss$sequence_id,
+                     sequence = ss$sequence_alignment_aa)
+
+#aaComp(df_seq$sequence[1])
+#aaDescriptors(df_seq$sequence[1])
+lengthpep(df_seq$sequence[1])
+mw(df_seq$sequence[1])
+charge(df_seq$sequence[1])
+hydrophobicity(df_seq$sequence[1])
+instaIndex(df_seq$sequence[1])
+pI(df_seq$sequence[1], pKscale="Bjellqvist")
+aIndex(df_seq$sequence[1])
+ExtinctionCoefficients(df_seq$sequence[1])
+
+
+
+mz(df_seq$sequence[1])
+
+```
+
+
+```{r}
+library(stringr)
+library(tableHTML)
+
+
+
+
+data.re <- apply(data, 2, function(x) str_replace_all(x, "RGD", '<span style="color:red; font-weight:bold">RGD</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "NG", '<span style="color:red; font-weight:bold">NG</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "DG", '<span style="color:red; font-weight:bold">DG</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "DDD", '<span style="color:blue; font-weight:bold">DDD</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "EEE", '<span style="color:blue; font-weight:bold">EEE</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "WWW", '<span style="color:blue; font-weight:bold">WWW</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "NSG", '<span style="color:red; font-weight:bold">NSG</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "N(.)S", '<span style="color:red; font-weight:bold">N\\1S</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "N([^P])T", '<span style="color:red; font-weight:bold">N\\1T</span>'))
+data.re <- apply(data.re, 2, function(x) str_replace_all(x, "(?<![C])C(?![C])", '<span style="background-color:yellow">C</span>'))
+
+tableHTML(data.re, escape = F, rownames = F, collapse = 'separate')
+
+mytabl <- tableHTML(data.re, 
+                    escape = F, rownames = F, collapse = 'separate',
+                    second_headers = list(c(5, 7, 4), c('', 'Heavy Chain', 'Light Chain')))
+```
+

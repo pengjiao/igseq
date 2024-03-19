@@ -1,0 +1,2 @@
+pythonPath: ~/miniconda3/bin/python
+outDirPath: ~/share/igblast_new

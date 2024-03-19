@@ -1,0 +1,18 @@
+Package: igseq
+Type: Package
+Title: Immunoglobulin Sequences Annotation
+Version: 0.1.0
+Author: Pengjiao Wang
+Maintainer: The package maintainer <pengjiaovv@gmail.com>
+Description: The package is used for immunoglobulin sequences germline gene matching, domain annotation and PTM sites visualization
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.1
+Imports:
+    shiny,
+    reticulate,
+    DT,
+    Peptides,
+    stringr,
+    tableHTML

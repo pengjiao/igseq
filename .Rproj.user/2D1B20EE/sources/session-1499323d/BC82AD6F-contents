@@ -1,0 +1,103 @@
+#' Launch Shiny Application
+#'
+#' This function starts the Shiny application for data analysis.
+#' @export
+launchApp <- function() {
+  library(shiny)
+  library(reticulate)
+
+  # Specify the Python virtual environment or Python interpreter path
+  use_python("/home/wpj/miniconda3/bin/python")
+
+  # Define the UI
+  ui <- fluidPage(
+    titlePanel("Antibody Sequence Analysis"),
+    sidebarLayout(
+      sidebarPanel(
+        fileInput("fastaFile", "Choose a FASTA File", accept = c(".fasta", ".fa")),
+        hr(), # Add a horizontal line for better separation
+        textAreaInput("fastaText", "Or paste FASTA content here:", rows = 8),
+        actionButton("analyzeBtn", "Analyze"), # Button to trigger the analysis
+        downloadButton("downloadData", "Download CSV")
+      ),
+      mainPanel(
+        tableOutput("resultsTable")
+      )
+    )
+  )
+
+  # Define the server logic
+  server <- function(input, output) {
+    analysisResults <- reactiveVal(NULL) # 初始化为NULL
+
+    observeEvent(input$analyzeBtn, {
+      req(input$fastaFile | input$fastaText != "") # 确保有输入
+
+      # 根据输入类型决定FASTA数据路径或内容
+      fastaContent <- if (!is.null(input$fastaFile)) {
+        readLines(input$fastaFile$datapath)
+      } else {
+        unlist(strsplit(input$fastaText, "\r\n|\r|\n")) # 兼容不同换行符
+      }
+
+      # 如果是文本输入，创建临时文件存储FASTA内容
+      if (is.null(input$fastaFile)) {
+        fastaPath <- tempfile(fileext = ".fasta")
+        writeLines(fastaContent, fastaPath)
+      } else {
+        fastaPath <- input$fastaFile$datapath
+      }
+
+      withProgress(message = 'Analysis in progress...', value = 0, {
+        setProgress(value = 0.5, message = "Analyzing sequences...")
+
+        # 假设有一个名为process_fasta的Python函数处理FASTA文件并返回DataFrame
+        py_run_string(paste0("
+from Bio import SeqIO
+from abnumber import Chain
+import pandas as pd
+
+def process_fasta(fasta_file_path):
+    data = []
+    for record in SeqIO.parse(fasta_file_path, 'fasta'):
+        chain = Chain(str(record.seq), scheme='imgt', cdr_definition='imgt')
+        data.append({
+            'seq_id': record.id,
+            'chain_type': chain.chain_type,
+            'fr1_seq': chain.fr1_seq,
+            'cdr1_seq': chain.cdr1_seq,
+            'fr2_seq': chain.fr2_seq,
+            'cdr2_seq': chain.cdr2_seq,
+            'fr3_seq': chain.fr3_seq,
+            'cdr3_seq': chain.cdr3_seq,
+            'fr4_seq': chain.fr4_seq
+        })
+    return pd.DataFrame(data)
+      "))
+
+        resultDf <- py$process_fasta(fastaPath)
+        analysisResults(resultDf) # 更新反应式变量存储结果
+
+        setProgress(value = 1, message = "Analysis complete!")
+      })
+    })
+
+    output$resultsTable <- renderTable({
+      req(analysisResults()) # 确保在尝试渲染表格前有数据
+      analysisResults()
+    })
+
+    output$downloadData <- downloadHandler(
+      filename = function() {
+        paste("antibody_sequences", Sys.Date(), ".csv", sep = "")
+      },
+      content = function(file) {
+        req(analysisResults()) # 确保在尝试下载前有数据
+        write.csv(analysisResults(), file, row.names = FALSE)
+      }
+    )
+  }
+
+  # Run the Shiny application
+  shinyApp(ui = ui, server = server)
+}

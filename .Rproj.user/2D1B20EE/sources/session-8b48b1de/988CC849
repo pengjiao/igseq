@@ -1,0 +1,28 @@
+{
+    "id": "988CC849",
+    "path": "~/igseq/fmt_to_table.Rmd",
+    "project_path": "fmt_to_table.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1710471860472.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "63,0",
+        "scrollLine": "62",
+        "last_setup_crc32": ""
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1710769125,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1710769125528,
+    "read_only": false,
+    "read_only_alternatives": []
+}
