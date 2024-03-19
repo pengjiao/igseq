@@ -7,15 +7,13 @@ library(tableHTML)
 source("R/custom_functions.R")
 
 
-launchApp <- function() {
-  configLines <- readLines("config.txt")
-  config <- list()
-  for (line in configLines) {
-    parts <- strsplit(line, ": ")[[1]]
-    config[[parts[1]]] <- parts[2]
+launchApp <- function(pythonPath = NULL, outDirPath = NULL) {
+  if (is.null(pythonPath)) {
+    pythonPath <- "~/miniconda3/bin/python"  # Please adjust the default paths as necessary
   }
-  pythonPath <- config[["pythonPath"]]
-  outDirPath <- config[["outDirPath"]]
+  if (is.null(outDirPath)) {
+    outDirPath <- "~/share/igblast"  # Please adjust the default paths as necessary
+  }
   reticulate::use_python(pythonPath)
 
   ui <- fluidPage(

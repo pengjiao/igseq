@@ -4,7 +4,7 @@
 \alias{launchApp}
 \title{Launch Antibody Analysis Tool}
 \usage{
-launchApp()
+launchApp(pythonPath = "~/miniconda3/bin/python", outDirPath = "~/share/igblast")
 }
 \description{
 Launches a Shiny application that provides an interface for antibody sequence analysis,
@@ -29,6 +29,14 @@ Each tab includes options to download the analysis results in CSV or TSV format.
 }
 \examples{
 \dontrun{
-  launchApp()
+  launchApp(pythonPath = "path/to/python", outDirPath = "path/to/outdir")
 }
+}
+\param{pythonPath}{
+The path to the Python executable. If not specified, "~/miniconda3/bin/python" is used as the default.
+Please adjust the default path as necessary based on your Python installation.
+}
+\param{outDirPath}{
+The path to the OUTDIR directory. If not specified, "~/share/igblast" is used as the default.
+Please adjust the default path as necessary based on your file system.
 }
