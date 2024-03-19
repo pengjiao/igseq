@@ -314,19 +314,19 @@ def process_fasta(fasta_content, remove_duplicates):
 
 
     # Render the initial analysis results table
-    output$resultsTable <- renderDT({
+    output$resultsTable <- DT::renderDT({
       req(analysisResults())
       datatable(analysisResults(),
                 options = list(pageLength = 10, scrollX = TRUE))
     })
 
-    output$propertyResultsTable <- renderDT({
+    output$propertyResultsTable <- DT::renderDT({
       req(propertiesResult())
       datatable(propertiesResult(),
                 options = list(pageLength = 10, scrollX = TRUE))
     })
 
-    output$ptmResultsTable <- renderUI({
+    output$ptmResultsTable <- shiny::renderUI({
       req(ptmResults())
       tableHTML(ptmResults(), escape = F, rownames = F, collapse = 'separate')
     })
