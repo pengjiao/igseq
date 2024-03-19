@@ -1,7 +1,7 @@
 source("R/custom_functions.R")
 
 
-launchApp <- function(pythonPath = NULL, outDirPath = NULL) {
+launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1') {
   library(shiny)
   library(reticulate)
   library(DT)
@@ -374,5 +374,5 @@ def process_fasta(fasta_content, remove_duplicates):
     )
   }
 
-  shinyApp(ui = ui, server = server)
+  hinyApp(ui = ui, server = server, options = list(host = host))
 }
