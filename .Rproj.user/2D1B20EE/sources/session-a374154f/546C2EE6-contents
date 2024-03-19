@@ -374,5 +374,5 @@ def process_fasta(fasta_content, remove_duplicates):
     )
   }
 
-  hinyApp(ui = ui, server = server, options = list(host = host))
+  shinyApp(ui = ui, server = server, options = list(host = host))
 }
