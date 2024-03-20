@@ -4,7 +4,7 @@
 \alias{launchApp}
 \title{Launch Antibody Analysis Tool}
 \usage{
-launchApp(pythonPath = "~/miniconda3/bin/python", outDirPath = "~/share/igblast_new")
+launchApp(pythonPath = "~/miniconda3/bin/python", outDirPath = "~/share/igblast_new", host = "127.0.0.1", port = 3838)
 }
 \description{
 Launches a Shiny application that provides an interface for antibody sequence analysis,
@@ -29,7 +29,7 @@ Each tab includes options to download the analysis results in CSV or TSV format.
 }
 \examples{
 \dontrun{
-  launchApp(pythonPath = "path/to/python", outDirPath = "path/to/outdir")
+  launchApp(pythonPath = "path/to/python", outDirPath = "path/to/outdir", host = "0.0.0.0", port = 4242)
 }
 }
 \arguments{
@@ -40,5 +40,13 @@ Each tab includes options to download the analysis results in CSV or TSV format.
   \item{outDirPath}{
     The path to the OUTDIR directory. If not specified, "~/share/igblast_new" is used as the default.
     Please adjust the default path as necessary based on your file system.
+  }
+  \item{host}{
+    The IP address that the Shiny server should listen on. If not specified, "127.0.0.1" is used as the default,
+    which restricts the access to localhost. Use "0.0.0.0" to allow access from any IP address.
+  }
+  \item{port}{
+    The port on which the Shiny application will listen. The default is 3838. Ensure that the specified port is available
+    and not blocked by firewalls or other network settings.
   }
 }
