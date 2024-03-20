@@ -23,7 +23,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
       tabPanel("Sequence Analysis",
                #titlePanel("Antibody Sequence and IgBLAST Analysis"),
                fluidRow(
-                 column(9,
+                 column(12,
                         wellPanel(
                           fileInput("fastaFile", "Choose a FASTA File", accept = c(".fasta", ".fa")),
                           hr(),
@@ -41,7 +41,11 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
                                    selectInput("species", "Species",
                                                choices = c("Mouse" = "mouse", "Human" = "human",
                                                            "Rat" = "rat", "Rhesus monkey" = "rhesus_monkey",
-                                                           "Rabbit" = "rabbit")))
+                                                           "Rabbit" = "rabbit"))),
+                            column(3,
+                                   selectInput("cdrScheme", "CDR regions:",
+                                               choices = list("IMGT" = "imgt", "Chothia" = "chothia", "Kabat" = "kabat"),
+                                               selected = "imgt"))
                           ),
                           actionButton("analyzeBtn", "Analyze"),
                           downloadButton("downloadData", "Download CSV"),
@@ -92,12 +96,24 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
     igBlastResultsFileJ <- reactiveVal()
 
     observeEvent(input$analyzeBtn, {
-      req(input$fastaFile)
+      #req(input$fastaFile)
+      scheme <- input$cdrScheme
+      cdr_definition <- input$cdrScheme
 
       # Perform the initial sequence analysis
       withProgress(message = 'Analysis in progress...', value = 0, {
         setProgress(value = 0.1, message = "Preparing analysis...")
         Sys.sleep(0.5)  # Simulating delay
+
+        fastaPath <- if (!is.null(input$fastaFile)) {
+          input$fastaFile$datapath
+        } else if (input$fastaText != "") {
+          tempFile <- tempfile(fileext = ".fasta")
+          writeLines(unlist(strsplit(input$fastaText, "\r\n|\r|\n")), tempFile)
+          tempFile
+        } else {
+          stop("No input provided")
+        }
 
         inputData <- if (!is.null(input$fastaFile)) {
           list(type = "file", content = readLines(input$fastaFile$datapath))
@@ -115,7 +131,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
 
         SPECIES <- input$species
         SEQTYPE <- "Ig"
-        fastaPath <- input$fastaFile$datapath
+        #fastaPath <- input$fastaFile$datapath
         outputFileV <- tempfile(fileext = ".tsv")
         outputFileJ <- tempfile(fileext = ".tsv")  # Separate output file for J gene
 
@@ -135,7 +151,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
 
           igBlastResults <- read.table(igBlastResultsFileV(), sep = "\t", header = T)
           if (input$removeDuplicates == "yes"){
-            igBlastResults <- igBlastResults[which(!duplicated(igBlastResults$sequence)),]
+            igBlastResults <- igBlastResults[which(!duplicated(igBlastResults$sequence_alignment_aa)),]
           }else{
             igBlastResults <- igBlastResults
           }
@@ -162,9 +178,11 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
             "igblastp",
             "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_aa_", SPECIES, "_ig_v")),
             "-query", shQuote(fastaPath),
-            "-outfmt 7 -organism", SPECIES,
+            "-outfmt", "7",
+            "-organism", SPECIES,
             "-out", shQuote(outputFileV)
           )
+
           system(cmdV, intern = TRUE)
           igBlastResultsFileV(outputFileV)
           igBlastResultsV <- read.table(igBlastResultsFileV(), sep = "\t", header = F, fill = T)
@@ -174,7 +192,8 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
             "igblastp",
             "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_aa_", SPECIES, "_ig_j")),
             "-query", shQuote(fastaPath),
-            "-outfmt 7 -organism", SPECIES,
+            "-outfmt", "7",
+            "-organism", SPECIES,
             "-out", shQuote(outputFileJ)
           )
           system(cmdJ, intern = TRUE)
@@ -191,7 +210,7 @@ from abnumber import Chain
 from io import StringIO
 import pandas as pd
 
-def process_fasta(fasta_content, remove_duplicates):
+def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
     data = []  # Data without sequence
     data_seq = []  # Data with sequence
     observed_sequences = set()
@@ -200,7 +219,7 @@ def process_fasta(fasta_content, remove_duplicates):
         if remove_duplicates and record.seq in observed_sequences:
             continue
         observed_sequences.add(record.seq)
-        chain = Chain(str(record.seq), scheme='imgt', cdr_definition='imgt')
+        chain = Chain(str(record.seq), scheme=scheme, cdr_definition=cdr_definition)
 
         # Append data with sequence
         data_seq.append({
@@ -223,7 +242,9 @@ def process_fasta(fasta_content, remove_duplicates):
           # removeDuplicatesFlag to Python function
           py$fasta_content <- fastaContent
           py$remove_duplicates <- removeDuplicatesFlag
-          df_seq(py$process_fasta(py$fasta_content, py$remove_duplicates))  # Correctly update the reactive value
+          py$scheme <- scheme
+          py$cdr_definition <- cdr_definition
+          df_seq(py$process_fasta(py$fasta_content, py$remove_duplicates, py$scheme, py$cdr_definition))
 
           v.df <- igBlastResultsV[match(df_seq()$seq_id, igBlastResultsV$V2),]
           j.df <- igBlastResultsJ[match(df_seq()$seq_id, igBlastResultsJ$V2),]
