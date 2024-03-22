@@ -88,6 +88,16 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
 
 
   server <- function(input, output, session) {
+    observe({
+      req(input$fastaFile)
+      fasta_path <- input$fastaFile$datapath
+      detected_type <- detect_sequence_type(fasta_path)
+
+      if (detected_type != input$analysisType) {
+        updateSelectInput(session, "analysisType", selected = detected_type)
+      }
+    })
+
     df_seq <- reactiveVal()
     propertiesResult <- reactiveVal()
     analysisResults <- reactiveVal()
@@ -133,7 +143,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
         SEQTYPE <- "Ig"
         #fastaPath <- input$fastaFile$datapath
         outputFileV <- tempfile(fileext = ".tsv")
-        outputFileJ <- tempfile(fileext = ".tsv")  # Separate output file for J gene
+        outputFileJ <- tempfile(fileext = ".tsv")
 
         if (input$analysisType == "igblastn") {
           cmd <- paste(
@@ -146,6 +156,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
             "-outfmt 19 -query", shQuote(fastaPath),
             "-out", shQuote(outputFileV)
           )
+
           system(cmd, intern = TRUE)
           igBlastResultsFileV(outputFileV)
 
@@ -345,6 +356,47 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       ptmResults(data.renew)
     })
 
+    observeEvent(input$downloadIgBlastResultsV, {
+      # 确保文件上传
+      req(input$fastaFile)
+
+      # 生成新的输出文件路径
+      new_output_file_v <- tempfile(pattern = "igblastn_v_", fileext = ".txt")
+
+      # 检查路径是否有效
+      print(new_output_file_v)  # 打印路径以供调试
+
+      # 构建 igblastn 命令
+      cmd <- paste(
+        "igblastn",
+        # 确保以下路径正确指向您的数据库和辅助文件
+        "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_", SPECIES, "_ig_v")),
+        "-germline_db_D", shQuote(paste0(OUTDIR, "/database/imgt_", SPECIES, "_ig_d")),
+        "-germline_db_J", shQuote(paste0(OUTDIR, "/database/imgt_", SPECIES, "_ig_j")),
+        "-auxiliary_data", shQuote(paste0(OUTDIR, "/optional_file/", SPECIES, "_gl.aux")),
+        "-domain_system imgt -ig_seqtype Ig -organism", SPECIES,
+        "-outfmt 7 -query", shQuote(input$fastaFile$datapath),
+        "-out", shQuote(new_output_file_v)
+      )
+
+      system(cmd)
+
+      if (!file.exists(new_output_file_v)) {
+        stop("The output file for igblastn was not created.")
+      }
+
+      # 配置下载处理器
+      output$downloadIgBlastResultsV <- downloadHandler(
+        filename = function() {
+          paste0("igblastn_results_v_", Sys.Date(), ".txt")
+        },
+        content = function(file) {
+          req(new_output_file_v)  # 确保文件路径有效
+          file.copy(new_output_file_v, file)
+        }
+      )
+    })
+
 
 
     # Render the initial analysis results table
@@ -406,7 +458,7 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
         paste0("igblast_results_v_", Sys.Date(), ".tsv")
       },
       content = function(file) {
-        file.copy(igBlastResultsFileV(), file)
+        file.copy(igBlastResultsFileV, file)
       }
     )
 

@@ -36,7 +36,8 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
                                                selected = "yes")),
                             column(3,
                                    selectInput("analysisType", "SequenceType:",
-                                               choices = c("Protein" = "igblastp", "DNA" = "igblastn"))),
+                                               choices = c("Protein" = "igblastp", "DNA" = "igblastn"),
+                                               selected = "")),
                             column(3,
                                    selectInput("species", "Species",
                                                choices = c("Mouse" = "mouse", "Human" = "human",
@@ -94,11 +95,32 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
     ptmResults <- reactiveVal()
     igBlastResultsFileV <- reactiveVal()
     igBlastResultsFileJ <- reactiveVal()
+    detectedType <- reactiveVal()
+
+    observe({
+
+      req(input$fastaFile)
+      fasta_path <- input$fastaFile$datapath
+      detected_type <- detect_sequence_type(fasta_path)
+      detectedType(detected_type)
+
+      if (detected_type != input$analysisType) {
+        updateSelectInput(session, "analysisType", selected = detected_type)
+      }
+      print(detectedType())
+    })
+
+
+
 
     observeEvent(input$analyzeBtn, {
       #req(input$fastaFile)
+      req(detectedType())
       scheme <- input$cdrScheme
       cdr_definition <- input$cdrScheme
+
+      sequenceType <- if (!is.null(input$analysisType)) input$analysisType else detectedType()
+
 
       # Perform the initial sequence analysis
       withProgress(message = 'Analysis in progress...', value = 0, {
@@ -113,6 +135,10 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
           tempFile
         } else {
           stop("No input provided")
+        }
+
+        if (!file.exists(fastaPath) || file.size(fastaPath) == 0) {
+          stop("The FASTA file is missing or empty.")
         }
 
         inputData <- if (!is.null(input$fastaFile)) {
@@ -133,9 +159,10 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
         SEQTYPE <- "Ig"
         #fastaPath <- input$fastaFile$datapath
         outputFileV <- tempfile(fileext = ".tsv")
-        outputFileJ <- tempfile(fileext = ".tsv")  # Separate output file for J gene
+        outputFileJ <- tempfile(fileext = ".tsv")
 
-        if (input$analysisType == "igblastn") {
+
+        if (detectedType() == "DNA" | input$analysisType == "igblastn") {
           cmd <- paste(
             "igblastn",
             "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_", SPECIES, "_ig_v")),
@@ -146,6 +173,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
             "-outfmt 19 -query", shQuote(fastaPath),
             "-out", shQuote(outputFileV)
           )
+
           system(cmd, intern = TRUE)
           igBlastResultsFileV(outputFileV)
 
@@ -172,7 +200,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
           df <- df_seq()[,which(colnames(df_seq()) != "sequence")]
           analysisResults(df)
 
-        } else {  # igblastp
+        } else if (detectedType() == "Protein" | input$analysisType == "igblastp") {  # igblastp
           # For V gene
           cmdV <- paste(
             "igblastp",
@@ -316,7 +344,6 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
         cdr3 = df_seq()$cdr3,
         fwr4 = df_seq()$fwr4
       )
-      print(data)
 
       data.re <- apply(data[,-1], 2, function(x) stringr::str_replace_all(x, "RGD", '<span style="color:red; font-weight:bold">RGD</span>'))
 
@@ -400,24 +427,115 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       }
     )
 
-    # Download handlers for IgBLAST results
+
     output$downloadIgBlastResultsV <- downloadHandler(
       filename = function() {
-        paste0("igblast_results_v_", Sys.Date(), ".tsv")
+        paste0("igblast_results_v_", Sys.Date(), ".txt")
       },
       content = function(file) {
-        file.copy(igBlastResultsFileV(), file)
+        req(input$analysisType)
+        fastaPath <- if (!is.null(input$fastaFile)) {
+          input$fastaFile$datapath
+        } else if (input$fastaText != "") {
+          tempFile <- tempfile(fileext = ".fasta")
+          writeLines(unlist(strsplit(input$fastaText, "\r\n|\r|\n")), tempFile)
+          tempFile
+        } else {
+          stop("No input provided")
+        }
+
+        outputFileV <- tempfile(fileext = ".txt")
+        OUTDIR <- normalizePath(outDirPath)
+        Sys.setenv(IGDATA = OUTDIR)
+        SPECIES <- input$species
+        SEQTYPE <- "Ig"
+
+        if (detectedType() == "DNA" | input$analysisType == "igblastn") {
+          cmd <- paste(
+            "igblastn",
+            "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_", input$species, "_ig_v")),
+            "-germline_db_D", shQuote(paste0(OUTDIR, "/database/imgt_", input$species, "_ig_d")),
+            "-germline_db_J", shQuote(paste0(OUTDIR, "/database/imgt_", input$species, "_ig_j")),
+            "-auxiliary_data", shQuote(paste0(OUTDIR, "/optional_file/", input$species, "_gl.aux")),
+            "-domain_system imgt -ig_seqtype Ig",
+            "-num_alignments_V 15",
+            "-organism", input$species,
+            "-outfmt 4 -query", shQuote(fastaPath),
+            "-out", shQuote(outputFileV)
+          )
+        } else if (detectedType() == "Protein" | input$analysisType == "igblastp") {
+          cmd <- paste(
+            "igblastp",
+            "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_aa_", input$species, "_ig_v")),
+            "-query", shQuote(fastaPath),
+            "-num_alignments_V 15",
+            "-outfmt", "4",
+            "-organism", input$species,
+            "-out", shQuote(outputFileV)
+          )
+        }
+
+        system(cmd, intern = TRUE)
+
+        file.copy(outputFileV, file)
       }
     )
 
+    # output$downloadIgBlastResultsJ <- downloadHandler(
+    #   filename = function() {
+    #     paste0("igblast_results_j_", Sys.Date(), ".tsv")
+    #   },
+    #   content = function(file) {
+    #     req(igBlastResultsFileJ())
+    #     if (file.exists(igBlastResultsFileJ())) {
+    #       file.copy(igBlastResultsFileJ(), file)
+    #     } else {
+    #       stop("J gene results file does not exist.")
+    #     }
+    #   }
+    # )
+
+    # Download handlers for IgBLAST J gene results - with distinction between DNA and Protein analysis
     output$downloadIgBlastResultsJ <- downloadHandler(
       filename = function() {
-        paste0("igblast_results_j_", Sys.Date(), ".tsv")
+        paste0("igblast_results_j_", Sys.Date(), ".txt")
       },
       content = function(file) {
-        file.copy(igBlastResultsFileJ(), file)
+        req(input$analysisType)
+        fastaPath <- if (!is.null(input$fastaFile)) {
+          input$fastaFile$datapath
+        } else if (input$fastaText != "") {
+          tempFile <- tempfile(fileext = ".fasta")
+          writeLines(unlist(strsplit(input$fastaText, "\r\n|\r|\n")), tempFile)
+          tempFile
+        } else {
+          stop("No input provided")
+        }
+
+        outputFileJ <- tempfile(fileext = ".txt")
+        OUTDIR <- normalizePath(outDirPath)
+        Sys.setenv(IGDATA = OUTDIR)
+        SPECIES <- input$species
+        SEQTYPE <- "Ig"
+
+        if (detectedType() == "Protein" | input$analysisType == "igblastp") {
+          cmd <- paste(
+            "igblastp",
+            "-germline_db_V", shQuote(paste0(OUTDIR, "/database/imgt_aa_", input$species, "_ig_j")),
+            "-query", shQuote(fastaPath),
+            "-num_alignments_V 15",
+            "-outfmt", "4",
+            "-organism", input$species,
+            "-out", shQuote(outputFileJ)
+          )
+        }
+
+        system(cmd, intern = TRUE)
+
+        file.copy(outputFileJ, file)
       }
     )
+
 
     output$downloadMergedResults <- downloadHandler(
       filename = function() {

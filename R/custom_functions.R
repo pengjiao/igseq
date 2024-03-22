@@ -30,3 +30,15 @@ ExtinctionCoefficients <- function(aa_sequence){
   return(results)
 
 }
+
+### detect upload sequence type
+detect_sequence_type <- function(file_path) {
+  sequences <- readLines(file_path)
+  seq_lines <- grep("^>", sequences, invert = TRUE, value = TRUE)
+  seq_sample <- paste(seq_lines, collapse = "")
+  if (grepl("[^ATCGNatcgn]", seq_sample, perl = TRUE)) {
+    return("Protein")
+  } else {
+    return("DNA")
+  }
+}
