@@ -80,6 +80,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
       ),
       tabPanel("PTM",
                actionButton("analyzePTMBtn", "Analyze"),
+               downloadButton("downloadHtml", "Download HTML"),
                uiOutput("ptmResultsTable")
       )
 
@@ -415,6 +416,21 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       tags$div(style = 'font-family: "Courier New";', HTML(htmlTable))
     })
 
+    output$downloadHtml <- downloadHandler(
+      filename = function() {
+        paste("full_table_", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        req(ptmResults())
+
+        html_content <- tableHTML(ptmResults(), escape = FALSE, rownames = FALSE, collapse = 'separate')
+        full_html_content <- tags$div(style = 'font-family: "Courier New";', HTML(html_content))
+
+        writeLines(as.character(full_html_content), file)
+      }
+    )
+
+
 
     # Download handler for the initial analysis results
     output$downloadData <- downloadHandler(
@@ -481,19 +497,6 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       }
     )
 
-    # output$downloadIgBlastResultsJ <- downloadHandler(
-    #   filename = function() {
-    #     paste0("igblast_results_j_", Sys.Date(), ".tsv")
-    #   },
-    #   content = function(file) {
-    #     req(igBlastResultsFileJ())
-    #     if (file.exists(igBlastResultsFileJ())) {
-    #       file.copy(igBlastResultsFileJ(), file)
-    #     } else {
-    #       stop("J gene results file does not exist.")
-    #     }
-    #   }
-    # )
 
     # Download handlers for IgBLAST J gene results - with distinction between DNA and Protein analysis
     output$downloadIgBlastResultsJ <- downloadHandler(
@@ -547,7 +550,11 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
         write.table(merged_df, file, sep = "\t", row.names = FALSE, quote = FALSE)
       }
     )
+
+
   }
+
+
 
   shinyApp(ui = ui, server = server, options = list(host = host, port = port))
 }
