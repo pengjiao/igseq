@@ -318,18 +318,31 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       )
       print(data)
 
-      data.re <- apply(data, 2, function(x) stringr::str_replace_all(x, "RGD", '<span style="color:red; font-weight:bold">RGD</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "NG", '<span style="color:red; font-weight:bold">NG</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "DG", '<span style="color:red; font-weight:bold">DG</span>'))
+      data.re <- apply(data[,-1], 2, function(x) stringr::str_replace_all(x, "RGD", '<span style="color:red; font-weight:bold">RGD</span>'))
+
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "NG", '<span style="background-color:red; font-weight:bold">NG</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "DG", '<span style="background-color:red; font-weight:bold">DG</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "NSG", '<span style="background-color:red; font-weight:bold">NSG</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "N([^P])S", '<span style="background-color:red; font-weight:bold">N\\1S</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "N([^P])T", '<span style="background-color:red; font-weight:bold">N\\1T</span>'))
+
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "DP", '<span style="background-color:orange; font-weight:bold">DP</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "DS", '<span style="background-color:orange; font-weight:bold">DS</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "NS", '<span style="background-color:orange; font-weight:bold">NS</span>'))
+
+
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "DDD", '<span style="color:blue; font-weight:bold">DDD</span>'))
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "EEE", '<span style="color:blue; font-weight:bold">EEE</span>'))
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "WWW", '<span style="color:blue; font-weight:bold">WWW</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "NSG", '<span style="color:red; font-weight:bold">NSG</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "N(.)S", '<span style="color:red; font-weight:bold">N\\1S</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "N([^P])T", '<span style="color:red; font-weight:bold">N\\1T</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "YYY", '<span style="color:blue; font-weight:bold">WWW</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "FFF", '<span style="color:blue; font-weight:bold">WWW</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "RRR", '<span style="color:blue; font-weight:bold">WWW</span>'))
+
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "(?<![C])C(?![C])", '<span style="background-color:yellow">C</span>'))
 
-      ptmResults(data.re)
+      data.renew <- cbind(data["seq_id"], data.re)
+
+      ptmResults(data.renew)
     })
 
 
@@ -338,8 +351,29 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
     output$resultsTable <- DT::renderDT({
       req(analysisResults())
       datatable(analysisResults(),
-                options = list(pageLength = 10, scrollX = TRUE))
+                options = list(
+                  pageLength = 10,
+                  scrollX = TRUE,
+                  columnDefs = list(
+                    list(targets = which(colnames(analysisResults()) == "cdr1"), className = 'cdr1'),
+                    list(targets = which(colnames(analysisResults()) == "cdr2"), className = 'cdr2'),
+                    list(targets = which(colnames(analysisResults()) == "cdr3"), className = 'cdr3')
+                  ),
+                  initComplete = JS(
+                    "function(settings, json) {",
+                    "$(this.api().table().node()).css('font-family', 'Courier New');",
+                    "$(this.api().table().node()).css('border-collapse', 'collapse');",
+                    "$(this.api().table().node()).find('th').css('border', '1px solid black');",
+                    "$(this.api().table().node()).find('td').css('border', '1px solid black');",
+                    "$(this.api().table().node()).find('.cdr1').css({'color': 'green', 'font-weight': 'bold'});",
+                    "$(this.api().table().node()).find('.cdr2').css({'color': 'blue', 'font-weight': 'bold'});",
+                    "$(this.api().table().node()).find('.cdr3').css({'color': 'red', 'font-weight': 'bold'});",
+                    "}"
+                  )
+                ))
     })
+
+
 
     output$propertyResultsTable <- DT::renderDT({
       req(propertiesResult())
@@ -347,9 +381,11 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
                 options = list(pageLength = 10, scrollX = TRUE))
     })
 
+
     output$ptmResultsTable <- shiny::renderUI({
       req(ptmResults())
-      tableHTML(ptmResults(), escape = F, rownames = F, collapse = 'separate')
+      htmlTable <- tableHTML(ptmResults(), escape = FALSE, rownames = FALSE, collapse = 'separate')
+      tags$div(style = 'font-family: "Courier New";', HTML(htmlTable))
     })
 
 
