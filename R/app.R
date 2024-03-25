@@ -8,6 +8,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
   library(Peptides)
   library(stringr)
   library(tableHTML)
+  library(seqinr)
 
   if (is.null(pythonPath)) {
     pythonPath <- "~/miniconda3/bin/python"  # Please adjust the default paths as necessary
@@ -63,6 +64,9 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
                )
       ),
       tabPanel("Physicochemical Property",
+               selectInput("sequenceType", "Select Sequence Type:",
+                           choices = c("Full length" = "full", "Variable region" = "variable"),
+                           selected = "full"),
                checkboxGroupInput("propertySelection", "Select properties to analyze:",
                                   choices = list("Length" = "Length",
                                                  "Molecular weight" = "Molecular weight",
@@ -72,13 +76,18 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
                                                  "Isoelectric point" = "Isoelectric point",
                                                  "Aliphatic index" = "Aliphatic index",
                                                  "Extinction coefficients" = "Extinction coefficients"),
-                                  selected = c("Length", "Molecular weight")),
+                                  selected = c("Length", "Molecular weight", "Isoelectric point")),
                actionButton("analyzePropertiesBtn", "Analyze"),
                dataTableOutput("propertyResultsTable"),
                downloadButton("downloadMergedResults", "Download Results")
 
       ),
       tabPanel("PTM",
+               selectInput("columnSelectionPTM", "Select columns to display:",
+                           choices = c("fwr1" = "fwr1", "cdr1" = "cdr1", "fwr2" = "fwr2",
+                                       "cdr2" = "cdr2", "fwr3" = "fwr3", "cdr3" = "cdr3",
+                                       "fwr4" = "fwr4"),
+                           selected = c("seq_id", "cdr1", "cdr2", "cdr3"), multiple = TRUE),
                actionButton("analyzePTMBtn", "Analyze"),
                downloadButton("downloadHtml", "Download HTML"),
                uiOutput("ptmResultsTable")
@@ -250,11 +259,15 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
         observed_sequences.add(record.seq)
         chain = Chain(str(record.seq), scheme=scheme, cdr_definition=cdr_definition)
 
+        # Combine sequences from cdr1 to fwr4 to create the v_sequence
+        v_sequence = chain.cdr1_seq + chain.fr2_seq + chain.cdr2_seq + chain.fr3_seq + chain.cdr3_seq + chain.fr4_seq
+
         # Append data with sequence
         data_seq.append({
             'seq_id': record.id,
             'chain': chain.chain_type,
-            'sequence': str(record.seq),  # Add the sequence here
+            'sequence': str(record.seq),
+            'v_sequence': v_sequence,
             'fwr1': chain.fr1_seq,
             'cdr1': chain.cdr1_seq,
             'fwr2': chain.fr2_seq,
@@ -281,7 +294,7 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
           current_df$v_call <- v.df$V3
           current_df$j_call <- j.df$V3
           df_seq(current_df)
-          df <- df_seq()[,which(colnames(df_seq()) != "sequence")]
+          df <- df_seq()[,which(!colnames(df_seq()) %in% c("sequence", "v_sequence"))]
 
           analysisResults(df)
 
@@ -295,6 +308,13 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       req(df_seq())
       print("Analyzing properties...")
       selectedProperties <- input$propertySelection
+      sequenceType <- input$sequenceType
+
+      selectedSequences <- if (sequenceType == "full") {
+        df_seq()$sequence
+      } else {
+        df_seq()$v_sequence
+      }
 
 
       # Initialize an empty data frame to store results
@@ -302,28 +322,28 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
 
       # Dynamically add selected properties to the results data frame
       if ("Length" %in% selectedProperties) {
-        results$Length <- sapply(df_seq()$sequence, Peptides::lengthpep)
+        results$Length <- sapply(selectedSequences, Peptides::lengthpep)
       }
       if ("Molecular weight" %in% selectedProperties) {
-        results$`Molecular weight` <- round(sapply(df_seq()$sequence, Peptides::mw), 3)
+        results$`Molecular weight` <- round(sapply(selectedSequences, Peptides::mw), 3)
       }
       if ("Net charge" %in% selectedProperties) {
-        results$`Net charge` <- round(sapply(df_seq()$sequence, Peptides::charge), 3)
+        results$`Net charge` <- round(sapply(selectedSequences, Peptides::charge), 3)
       }
       if ("Hydrophobicity index" %in% selectedProperties) {
-        results$`Hydrophobicity index` <- round(sapply(df_seq()$sequence, Peptides::hydrophobicity), 3)
+        results$`Hydrophobicity index` <- round(sapply(selectedSequences, Peptides::hydrophobicity), 3)
       }
       if ("Instability index" %in% selectedProperties) {
-        results$`Instability index` <- round(sapply(df_seq()$sequence, Peptides::instaIndex), 3)
+        results$`Instability index` <- round(sapply(selectedSequences, Peptides::instaIndex), 3)
       }
       if ("Isoelectric point" %in% selectedProperties) {
-        results$`Isoelectric point` <- round(sapply(df_seq()$sequence, function(seq) Peptides::pI(seq, pKscale="Bjellqvist")), 3)
+        results$`Isoelectric point` <- round(sapply(selectedSequences, function(seq) seqinr::computePI(seqinr::s2c(seq))), 3)
       }
       if ("Aliphatic index" %in% selectedProperties) {
-        results$`Aliphatic index` <- round(sapply(df_seq()$sequence, Peptides::aIndex), 3)
+        results$`Aliphatic index` <- round(sapply(selectedSequences, Peptides::aIndex), 3)
       }
       if ("Extinction coefficients" %in% selectedProperties) {
-        extinction_values <- lapply(df_seq()$sequence, ExtinctionCoefficients)
+        extinction_values <- lapply(selectedSequences, ExtinctionCoefficients)
         extinction_df <- do.call(rbind, extinction_values)
         colnames(extinction_df) <- c("Ext_Coef_paired", "Absorb_paired", "Ext_Coef_unpaired", "Absorb_unpaired")
         results <- cbind(results, extinction_df)
@@ -335,16 +355,12 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
     observeEvent(input$analyzePTMBtn, {
       req(df_seq())
       print("Analyzing properties...")
-      data <- data.frame(
-        seq_id = df_seq()$seq_id,
-        fwr1 = df_seq()$fwr1,
-        cdr1 = df_seq()$cdr1,
-        fwr2 = df_seq()$fwr2,
-        cdr2 = df_seq()$cdr2,
-        fwr3 = df_seq()$fwr3,
-        cdr3 = df_seq()$cdr3,
-        fwr4 = df_seq()$fwr4
-      )
+      selectedColumnsPTM <- input$columnSelectionPTM
+      if (!"seq_id" %in% selectedColumnsPTM) {
+        selectedColumnsPTM <- c("seq_id", selectedColumnsPTM)
+      }
+
+      data <- df_seq()[, selectedColumnsPTM, drop = FALSE]
 
       data.re <- apply(data[,-1], 2, function(x) stringr::str_replace_all(x, "RGD", '<span style="color:red; font-weight:bold">RGD</span>'))
 

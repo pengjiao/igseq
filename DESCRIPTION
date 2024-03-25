@@ -15,4 +15,5 @@ Imports:
     DT,
     Peptides,
     stringr,
-    tableHTML
+    tableHTML,
+    seqinr

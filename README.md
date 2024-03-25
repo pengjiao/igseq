@@ -24,6 +24,7 @@ Before running the `igseq` application, ensure all necessary R packages are inst
 - Peptides
 - stringr
 - tableHTML
+- seqinr
 
 ### 2. Python Configuration and Requirements
 
