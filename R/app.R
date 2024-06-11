@@ -114,6 +114,7 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
       detected_type <- detect_sequence_type(fasta_path)
       detectedType(detected_type)
 
+
       if (detected_type != input$analysisType) {
         updateSelectInput(session, "analysisType", selected = detected_type)
       }
@@ -124,12 +125,35 @@ launchApp <- function(pythonPath = NULL, outDirPath = NULL, host = '127.0.0.1', 
 
 
     observeEvent(input$analyzeBtn, {
+
+      if (!is.null(input$fastaFile)) {
+        print("File input detected.")
+        detected_type <- detectedType(input$fastaFile$datapath)
+      } else if (input$fastaText != "") {
+        print("Text input detected.")
+        tempFile <- tempfile(fileext = ".fasta")
+        writeLines(unlist(strsplit(input$fastaText, "\r\n|\r|\n")), tempFile)
+        detected_type <- detectedType(tempFile)
+      } else {
+        print("No input provided.")
+        return()
+      }
+
+      if (is.null(detected_type) || detected_type == "") {
+        print("Failed to detect sequence type, please check the input.")
+        return()
+      }
+
+      print(paste("Detected sequence type:", detected_type))
+
       #req(input$fastaFile)
       req(detectedType())
       scheme <- input$cdrScheme
       cdr_definition <- input$cdrScheme
 
       sequenceType <- if (!is.null(input$analysisType)) input$analysisType else detectedType()
+
+
 
 
       # Perform the initial sequence analysis
@@ -378,9 +402,9 @@ def process_fasta(fasta_content, remove_duplicates, scheme, cdr_definition):
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "DDD", '<span style="color:blue; font-weight:bold">DDD</span>'))
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "EEE", '<span style="color:blue; font-weight:bold">EEE</span>'))
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "WWW", '<span style="color:blue; font-weight:bold">WWW</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "YYY", '<span style="color:blue; font-weight:bold">WWW</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "FFF", '<span style="color:blue; font-weight:bold">WWW</span>'))
-      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "RRR", '<span style="color:blue; font-weight:bold">WWW</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "YYY", '<span style="color:blue; font-weight:bold">YYY</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "FFF", '<span style="color:blue; font-weight:bold">FFF</span>'))
+      data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "RRR", '<span style="color:blue; font-weight:bold">RRR</span>'))
 
       data.re <- apply(data.re, 2, function(x) stringr::str_replace_all(x, "(?<![C])C(?![C])", '<span style="background-color:yellow">C</span>'))
 
